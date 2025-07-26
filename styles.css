@@ -126,7 +126,7 @@ button.danger:hover {
   color: #856404;
 }
 
-/* Modal para selecionar a condição do dente */
+/* Modal for selecting tooth status */
 .status-modal {
   position: fixed;
   top: 0;
