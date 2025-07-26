@@ -1,132 +1,4 @@
-/* This file is identical to the CSS in the vanilla version of the app */
-body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  background: #f5f5f5;
-}
-#app {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 20px;
-  background: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  min-height: 100vh;
-}
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-nav ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  gap: 10px;
-}
-nav ul li {
-  display: inline-block;
-}
-nav ul li button {
-  background: #007bff;
-  color: #fff;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-nav ul li button:hover {
-  background: #0056b3;
-}
-h1 {
-  margin-top: 0;
-}
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 20px;
-}
-th, td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
-}
-th {
-  background: #f0f0f0;
-}
-form {
-  margin-bottom: 20px;
-}
-form > div {
-  margin-bottom: 10px;
-}
-label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-input[type="text"], input[type="number"], input[type="date"], input[type="datetime-local"], input[type="password"], select, textarea {
-  width: 100%;
-  padding: 6px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-button.primary {
-  background: #28a745;
-  color: #fff;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-button.primary:hover {
-  background: #218838;
-}
-button.danger {
-  background: #dc3545;
-  color: #fff;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-button.danger:hover {
-  background: #c82333;
-}
-.odontogram {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 4px;
-  margin-bottom: 20px;
-}
-.odontogram button {
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  background: #e9ecef;
-}
-.odontogram button.healthy {
-  background: #d4edda;
-  color: #155724;
-}
-.odontogram button.caries {
-  background: #f8d7da;
-  color: #721c24;
-}
-.odontogram button.missing {
-  background: #ffeeba;
-  color: #856404;
-}
-
-/* Modal for selecting tooth status */
+/* Modal para selecionar a condição do dente */
 .status-modal {
   position: fixed;
   top: 0;
@@ -139,6 +11,7 @@ button.danger:hover {
   justify-content: center;
   z-index: 999;
 }
+
 .status-modal .modal-content {
   background: #fff;
   padding: 20px;
@@ -147,20 +20,20 @@ button.danger:hover {
   width: 90%;
   max-width: 400px;
 }
+
 .status-modal .modal-content h3 {
   margin-top: 0;
 }
+
 .status-modal .modal-actions {
   margin-top: 10px;
   text-align: right;
 }
+
 .status-modal select {
   width: 100%;
   padding: 6px;
   margin-top: 10px;
   border-radius: 4px;
   border: 1px solid #ccc;
-}
-.hidden {
-  display: none;
 }
