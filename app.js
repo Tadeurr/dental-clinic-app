@@ -266,33 +266,83 @@ function renderOdontogramPage(patient) {
   h2.textContent = 'Odontograma de ' + patient.name;
   section.appendChild(h2);
   const desc = document.createElement('p');
-  desc.textContent = 'Clique em cada dente para alternar entre saudável, cárie ou ausente.';
+  desc.textContent = 'Clique em cada dente e escolha a condição para registrá-la no prontuário.';
   section.appendChild(desc);
   const grid = document.createElement('div');
   grid.className = 'odontogram';
+  // Array of tooth numbers in FDI notation (permanent teeth) displayed in two arches.
   const teethNumbers = ['18','17','16','15','14','13','12','11',
                         '21','22','23','24','25','26','27','28',
                         '48','47','46','45','44','43','42','41',
                         '31','32','33','34','35','36','37','38'];
+  // Create modal for selecting status
+  const statusModal = document.createElement('div');
+  statusModal.className = 'status-modal hidden';
+  const modalContent = document.createElement('div');
+  modalContent.className = 'modal-content';
+  const modalTitle = document.createElement('h3');
+  modalContent.appendChild(modalTitle);
+  const selectEl = document.createElement('select');
+  TOOTH_STATUS_OPTIONS.forEach(opt => {
+    const option = document.createElement('option');
+    option.value = opt.code;
+    option.textContent = opt.label;
+    selectEl.appendChild(option);
+  });
+  modalContent.appendChild(selectEl);
+  const actionsDiv = document.createElement('div');
+  actionsDiv.className = 'modal-actions';
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Salvar';
+  saveBtn.className = 'primary';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancelar';
+  cancelBtn.className = 'danger';
+  actionsDiv.appendChild(cancelBtn);
+  actionsDiv.appendChild(saveBtn);
+  modalContent.appendChild(actionsDiv);
+  statusModal.appendChild(modalContent);
+  document.body.appendChild(statusModal);
+
+  let selectedTooth = null;
+  // Function to open modal for a specific tooth
+  function openModal(toothNum) {
+    selectedTooth = toothNum;
+    modalTitle.textContent = 'Selecionar condição para dente ' + toothNum;
+    // Set select value based on existing status or empty
+    const currCode = patient.odontogram && patient.odontogram[toothNum] ? patient.odontogram[toothNum] : '';
+    selectEl.value = currCode;
+    statusModal.classList.remove('hidden');
+  }
+  // Handle saving selection
+  saveBtn.addEventListener('click', async () => {
+    const code = selectEl.value;
+    if (!patient.odontogram) patient.odontogram = {};
+    patient.odontogram[selectedTooth] = code;
+    // Update the button display
+    const btn = grid.querySelector(`button[data-tooth=\"${selectedTooth}\"]`);
+    if (btn) {
+      btn.className = '';
+      btn.classList.add('tooth');
+      btn.textContent = `${selectedTooth}${code ? ' (' + code + ')' : ''}`;
+    }
+    await updateDoc(doc(db, 'patients', patient.id), { odontogram: patient.odontogram });
+    statusModal.classList.add('hidden');
+  });
+  // Cancel selection
+  cancelBtn.addEventListener('click', () => {
+    statusModal.classList.add('hidden');
+  });
+  // Create tooth buttons
   teethNumbers.forEach(num => {
     const btn = document.createElement('button');
     btn.dataset.tooth = num;
-    const status = patient.odontogram && patient.odontogram[num] ? patient.odontogram[num] : 'healthy';
-    btn.classList.add(status);
-    btn.textContent = num;
-    btn.addEventListener('click', async () => {
-      let curr = patient.odontogram ? patient.odontogram[num] : 'healthy';
-      if (!curr) curr = 'healthy';
-      if (curr === 'healthy') curr = 'caries';
-      else if (curr === 'caries') curr = 'missing';
-      else curr = 'healthy';
-      if (!patient.odontogram) patient.odontogram = {};
-      patient.odontogram[num] = curr;
-      btn.className = '';
-      btn.classList.add(curr);
-      btn.textContent = num;
-      // Persist update
-      await updateDoc(doc(db, 'patients', patient.id), { odontogram: patient.odontogram });
+    // Determine display text: show code if any
+    const code = patient.odontogram && patient.odontogram[num] ? patient.odontogram[num] : '';
+    btn.textContent = code ? `${num} (${code})` : num;
+    btn.classList.add('tooth');
+    btn.addEventListener('click', () => {
+      openModal(num);
     });
     grid.appendChild(btn);
   });
@@ -301,103 +351,38 @@ function renderOdontogramPage(patient) {
   backBtn.textContent = 'Voltar';
   backBtn.className = 'primary';
   backBtn.addEventListener('click', () => {
+    // Remove modal from document body when leaving page
+    statusModal.remove();
     renderPatientsPage();
   });
   section.appendChild(backBtn);
   setContentArea(section);
 }
 
-// Procedures page
-async function renderProceduresPage() {
-  await preparePage(async () => {
-    const procedures = await fetchCollection('procedures');
-    return procedures;
-  }, buildProceduresSection);
-}
-
-function buildProceduresSection(procedures) {
-  clearContentArea();
-  const section = document.createElement('section');
-  const h2 = document.createElement('h2');
-  h2.textContent = 'Procedimentos';
-  section.appendChild(h2);
-  // Form
-  const form = document.createElement('form');
-  form.innerHTML = `
-    <div>
-      <label for="proc-name">Nome</label>
-      <input type="text" id="proc-name" required>
-    </div>
-    <div>
-      <label for="proc-desc">Descrição</label>
-      <input type="text" id="proc-desc">
-    </div>
-    <button type="submit" class="primary">Salvar Procedimento</button>
-    <button type="button" id="proc-form-cancel" class="danger hidden">Cancelar</button>
-  `;
-  let editingId = null;
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('proc-name').value.trim();
-    const desc = document.getElementById('proc-desc').value.trim();
-    if (editingId) {
-      await updateDoc(doc(db, 'procedures', editingId), { name, description: desc });
-      editingId = null;
-    } else {
-      await addDoc(collection(db, 'procedures'), { name, description: desc });
-    }
-    form.reset();
-    form.querySelector('#proc-form-cancel').classList.add('hidden');
-    renderProceduresPage();
-  });
-  form.querySelector('#proc-form-cancel').addEventListener('click', () => {
-    editingId = null;
-    form.reset();
-    form.querySelector('#proc-form-cancel').classList.add('hidden');
-  });
-  section.appendChild(form);
-  // Table
-  const table = document.createElement('table');
-  table.innerHTML = '<thead><tr><th>Nome</th><th>Descrição</th><th>Ações</th></tr></thead>';
-  const tbody = document.createElement('tbody');
-  procedures.forEach(proc => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${proc.name}</td><td>${proc.description || ''}</td><td></td>`;
-    const actionsTd = tr.querySelector('td:last-child');
-    const editBtn = document.createElement('button');
-    editBtn.textContent = 'Editar';
-    editBtn.className = 'primary';
-    editBtn.addEventListener('click', () => {
-      editingId = proc.id;
-      document.getElementById('proc-name').value = proc.name;
-      document.getElementById('proc-desc').value = proc.description || '';
-      form.querySelector('#proc-form-cancel').classList.remove('hidden');
-    });
-    actionsTd.appendChild(editBtn);
-    const delBtn = document.createElement('button');
-    delBtn.textContent = 'Excluir';
-    delBtn.className = 'danger';
-    delBtn.style.marginLeft = '5px';
-    delBtn.addEventListener('click', async () => {
-      if (confirm('Tem certeza que deseja excluir este procedimento?')) {
-        await deleteDoc(doc(db, 'procedures', proc.id));
-        // Remove from appointments
-        const appts = await fetchCollection('appointments');
-        for (const appt of appts) {
-          if (appt.procedureId === proc.id) {
-            await deleteDoc(doc(db, 'appointments', appt.id));
-          }
-        }
-        renderProceduresPage();
-      }
-    });
-    actionsTd.appendChild(delBtn);
-    tbody.appendChild(tr);
-  });
-  table.appendChild(tbody);
-  section.appendChild(table);
-  setContentArea(section);
-}
+// List of possible tooth statuses. Each status has a code and a human‑readable label.
+// These codes will be stored in the patient's odontogram map.
+const TOOTH_STATUS_OPTIONS = [
+  { code: '', label: 'Nenhum' },
+  { code: 'PPR', label: 'Prótese parcial removível' },
+  { code: 'PCU', label: 'Prótese coronária unitária' },
+  { code: 'PT',  label: 'Prótese temporária' },
+  { code: 'A',   label: 'Ausente' },
+  { code: 'Cd',  label: 'Cálculo dental' },
+  { code: 'C',   label: 'Cariado' },
+  { code: 'Cr',  label: 'Coroa' },
+  { code: 'Ix',  label: 'Extração indicada' },
+  { code: 'F',   label: 'Fratura' },
+  { code: 'H',   label: 'Higió' },
+  { code: 'Hs',  label: 'Higió selado' },
+  { code: 'I',   label: 'Implante' },
+  { code: 'M',   label: 'Mancha branca ativa' },
+  { code: 'P',   label: 'Plano' },
+  { code: 'R',   label: 'Restaurado' },
+  { code: 'Rc',  label: 'Restaurado com cárie' },
+  { code: 'Rp',  label: 'Restaurado com placa' },
+  { code: 'Rg',  label: 'Retoque gengival' },
+  { code: 'S',   label: 'Selante indicado' }
+];
 
 // Appointments page
 async function renderAppointmentsPage() {
@@ -418,33 +403,33 @@ function buildAppointmentsSection(data) {
   section.appendChild(h2);
   const form = document.createElement('form');
   // Build options
-  const patientOptions = patients.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-  const procedureOptions = procedures.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  const patientOptions = patients.map(p => `<option value=\"${p.id}\">${p.name}</option>`).join('');
+  const procedureOptions = procedures.map(p => `<option value=\"${p.id}\">${p.name}</option>`).join('');
   form.innerHTML = `
     <div>
-      <label for="appt-patient">Paciente</label>
-      <select id="appt-patient" required>
-        <option value="">Selecione</option>
+      <label for=\"appt-patient\">Paciente</label>
+      <select id=\"appt-patient\" required>
+        <option value=\"\">Selecione</option>
         ${patientOptions}
       </select>
     </div>
     <div>
-      <label for="appt-procedure">Procedimento</label>
-      <select id="appt-procedure" required>
-        <option value="">Selecione</option>
+      <label for=\"appt-procedure\">Procedimento</label>
+      <select id=\"appt-procedure\" required>
+        <option value=\"\">Selecione</option>
         ${procedureOptions}
       </select>
     </div>
     <div>
-      <label for="appt-date">Data e hora</label>
-      <input type="datetime-local" id="appt-date" required>
+      <label for=\"appt-date\">Data e hora</label>
+      <input type=\"datetime-local\" id=\"appt-date\" required>
     </div>
     <div>
-      <label for="appt-notes">Observações</label>
-      <input type="text" id="appt-notes">
+      <label for=\"appt-notes\">Observações</label>
+      <input type=\"text\" id=\"appt-notes\">
     </div>
-    <button type="submit" class="primary">Salvar Agendamento</button>
-    <button type="button" id="appt-form-cancel" class="danger hidden">Cancelar</button>
+    <button type=\"submit\" class=\"primary\">Salvar Agendamento</button>
+    <button type=\"button\" id=\"appt-form-cancel\" class=\"danger hidden\">Cancelar</button>
   `;
   let editingId = null;
   form.addEventListener('submit', async (e) => {
@@ -541,23 +526,23 @@ function buildUsersSection(users) {
   const form = document.createElement('form');
   form.innerHTML = `
     <div>
-      <label for="user-username">Usuário</label>
-      <input type="text" id="user-username" required>
+      <label for=\"user-username\">Usuário</label>
+      <input type=\"text\" id=\"user-username\" required>
     </div>
     <div>
-      <label for="user-password">Senha</label>
-      <input type="password" id="user-password" required>
+      <label for=\"user-password\">Senha</label>
+      <input type=\"password\" id=\"user-password\" required>
     </div>
     <div>
-      <label for="user-role">Função</label>
-      <select id="user-role" required>
-        <option value="">Selecione</option>
-        <option value="Admin">Admin</option>
-        <option value="Dentista">Dentista</option>
-        <option value="Recepcionista">Recepcionista</option>
+      <label for=\"user-role\">Função</label>
+      <select id=\"user-role\" required>
+        <option value=\"\">Selecione</option>
+        <option value=\"Admin\">Admin</option>
+        <option value=\"Dentista\">Dentista</option>
+        <option value=\"Recepcionista\">Recepcionista</option>
       </select>
     </div>
-    <button type="submit" class="primary">Adicionar Usuário</button>
+    <button type=\"submit\" class=\"primary\">Adicionar Usuário</button>
   `;
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
